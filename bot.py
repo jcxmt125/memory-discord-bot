@@ -37,7 +37,7 @@ async def llmreq(ctx, *, msg):
 
 @bot.command()
 async def talk(ctx, *, msg):
-    usr = ctx.message.author
+    usr = str(ctx.message.author)
 
     #short term memory: list (gemini API)
     #long term memory: ???
@@ -63,12 +63,14 @@ async def talk(ctx, *, msg):
 
         try:
             modelReply = gemrequest(construct)
-            await ctx.send(modelReply)
+            if modelReply[0] == False:
+                raise
+            await ctx.send(modelReply[1])
         except:
             await ctx.send("Sorry, something seems to have gone wrong. Please try again. This conversation wasn't recorded into memory.")
             return
         
-        construct.append({'role':'model', 'parts': [modelReply]})
+        construct.append({'role':'model', 'parts': [modelReply[1]]})
 
         with open("stmemories/"+usr+".json", "w", encoding="utf-8") as mem:
             json.dump(construct, mem)

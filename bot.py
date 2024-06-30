@@ -135,6 +135,129 @@ async def talk(ctx, *, msg):
         with open("stmemories/"+usr+".json", "w", encoding="utf-8") as mem:
             json.dump(construct, mem)
 
+@bot.command()
+async def transcribe(ctx):
+
+    async with ctx.typing():
+
+        attachments = ctx.message.attachments
+
+        if len(attachments) == 0:
+            await ctx.send("I'll try to parse through a few previous messages to find what file you want transcribed...")
+            channel = ctx.channel
+            try:
+                messages = [message async for message in channel.history(limit=attachmentSearchContextlength)]
+            except discord.HTTPException as e:
+                await ctx.send(f"An error occurred: {e}")
+                return
+
+            for message in messages:
+                if len(message.attachments) != 0:
+                    attachments = message.attachments
+                    break
+            
+            if len(attachments) == 0:
+                await ctx.send("I was unable to find an audio file to transcribe. Please try again.")
+                return
+                
+        for i in attachments:
+            try:
+                if not (str(i.content_type).split("/")[0] == "audio" ):
+                    continue
+                await ctx.send("> " + whispercf.cfwhisper(i.url)["result"]["text"])
+            except:
+                await ctx.send("Sorry, something went wrong while trying to transcribe the file.")
+
+@bot.command()
+async def ytdlAudio(ctx, msg):
+
+    async with ctx.typing():
+        url = URLExtract().find_urls(msg)[0]
+        
+        subprocess.run(["yt-dlp","-x","-o","video",url])
+
+        localconverters.ffmpeg("video.opus","mp3")
+
+        await ctx.channel.send(file=discord.File("video.mp3"))
+
+        Path.unlink(Path("video.opus"))
+        Path.unlink(Path("video.mp3"))
+
+@bot.command()
+async def convert(ctx, msg):
+
+    async with ctx.typing():
+        attachments = ctx.message.attachments
+
+        if len(attachments) == 0:
+            await ctx.send("You need to send me a file to convert!")
+            return
+        
+        typ, origform = attachments[0].content_type.split("/")
+
+        if typ == "image":
+            conv = localconverters.imagemagick
+        elif typ == "video":
+            conv = localconverters.ffmpeg
+        elif typ == "audio":
+            conv = localconverters.ffmpeg
+        else:
+            await ctx.send("I can only convert things supported by ffmpeg or imagemagick!")
+            return
+
+        listnewfiles = []
+        listoldfiles = []
+        listnewfilenames = []
+
+        for i in attachments:
+            filename = i.filename
+            await i.save(fp=filename)
+            listoldfiles.append(filename)
+            conv(filename,msg)
+            splitname = filename.split(".")
+
+            noext = ""
+
+            for i in range(len(splitname)-1):
+                noext += splitname[i]
+
+            newfilename = noext+"."+msg
+
+            print(newfilename)
+
+            listnewfiles.append(discord.File(newfilename))
+            listnewfilenames.append(newfilename)
+        
+        await ctx.channel.send(files=listnewfiles)
+
+        #Clean up the downloaded and converted files
+        for i in listoldfiles:
+            Path.unlink(Path(i))
+        for j in listnewfilenames:
+            Path.unlink(Path(j))
+        
+@bot.command()
+async def urlscan(ctx, msg):
+
+    async with ctx.typing():
+
+        url = URLExtract.find_urls(msg)[0]
+
+        if url[-1] == "/":
+                    url = url[0:-1]
+        print(url)
+        scanResults = urlScan(url)
+        try:
+            verdict, timeMade = scanResults
+            if verdict["malicious"]:
+                await ctx.channel.send("The URL is likely malicious, catergorized as "+str(verdict["categories"])+". The report was made on "+timeMade+". Do NOT access the webpage for your own safety.")
+            else:
+                await ctx.channel.send("The URL is likely safe. The report was made on "+timeMade+".")
+        except:
+            await ctx.channel.send("I've sent a request to scan the URL. The report should be available at https://radar.cloudflare.com/scan/"+scanResults+" in a few minutes. Check here, or run this command again!")
+
+
+
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user} (ID: {bot.user.id})')

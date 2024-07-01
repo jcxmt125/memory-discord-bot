@@ -7,3 +7,4 @@ boto3
 urlextract
 yt-dlp
 discord.py
+qreader

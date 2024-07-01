@@ -3,6 +3,8 @@ import discord, os, json, subprocess, datetime
 from discord.ext import commands
 from dotenv import load_dotenv
 from pathlib import Path
+from qreader import QReader
+import cv2
 
 #my own python files
 from geminillm import gemrequest
@@ -146,7 +148,7 @@ async def transcribe(ctx):
             await ctx.send("I'll try to parse through a few previous messages to find what file you want transcribed...")
             channel = ctx.channel
             try:
-                messages = [message async for message in channel.history(limit=attachmentSearchContextlength)]
+                messages = [message async for message in channel.history(limit=5)]
             except discord.HTTPException as e:
                 await ctx.send(f"An error occurred: {e}")
                 return
@@ -255,6 +257,89 @@ async def urlscan(ctx, msg):
                 await ctx.channel.send("The URL is likely safe. The report was made on "+timeMade+".")
         except:
             await ctx.channel.send("I've sent a request to scan the URL. The report should be available at https://radar.cloudflare.com/scan/"+scanResults+" in a few minutes. Check here, or run this command again!")
+
+@bot.command()
+async def qrscan(ctx):
+
+    async with ctx.typing():
+
+        attachments = ctx.message.attachments
+
+        if len(attachments) == 0:
+            await ctx.send("I'll try to parse through a few previous messages to find what file you want to scan...")
+            channel = ctx.channel
+            try:
+                messages = [message async for message in channel.history(limit=5)]
+            except discord.HTTPException as e:
+                await ctx.send(f"An error occurred: {e}")
+                return
+
+            for message in messages:
+                if len(message.attachments) != 0:
+                    attachments = message.attachments
+                    break
+            
+            if len(attachments) == 0:
+                await ctx.send("I was unable to find a file to scan. Please try again.")
+                return
+        
+        qreader = QReader()
+
+        for i in attachments:
+            try:
+                filename = i.filename
+                await i.save(fp=filename)
+                image = cv2.cvtColor(cv2.imread(filename), cv2.COLOR_BGR2RGB)
+                decoded_text = qreader.detect_and_decode(image=image)
+
+                if len(decoded_text) == 0:
+                    await ctx.send("No QR code found. Please try again.")
+                
+                else:
+                    await ctx.send(decoded_text[0])
+                
+                Path.unlink(Path(filename))
+
+            except:
+                await ctx.send("Sorry, something went wrong while trying to scan the QR code.")
+                return
+
+@bot.command()
+async def publish(ctx):
+    async with ctx.typing():
+        if len(attachments) == 0:
+            await ctx.send("I'll try to parse through a few previous messages to find what file you want to use...")
+            channel = ctx.channel
+            try:
+                messages = [message async for message in channel.history(limit=5)]
+            except discord.HTTPException as e:
+                await ctx.send(f"An error occurred: {e}")
+                return
+
+            for message in messages:
+                if len(message.attachments) != 0:
+                    attachments = message.attachments
+                    break
+            
+            if len(attachments) == 0:
+                await ctx.send("I was unable to find a text file to publish. Please try again.")
+                return
+
+        for i in attachments:
+
+            filename = i.filename
+
+            await i.save(fp=filename)
+            
+            with open(filename, "r", encoding="UTF-8") as txtfile:
+                htmlLoc = makePage(txtfile.readlines(), description="Automatically generated page from "+filename)
+            
+            link = uploadFileToCloud(htmlLoc, "webpage/")
+
+            Path.unlink(Path(filename))
+            Path.unlink(Path(htmlLoc))
+            
+            await ctx.send(link)
 
 
 

@@ -24,6 +24,10 @@ bot = commands.Bot(command_prefix='?', intents=intents)
 
 @bot.command()
 async def llmreq(ctx, *, msg):
+    """
+    Straight request to the llm backend.
+    Does not have any additional features, simply add what you'd like to send as a request.
+    """
     async with ctx.typing():
         try:
             resp = gemrequest(msg)
@@ -37,6 +41,10 @@ async def llmreq(ctx, *, msg):
 
 @bot.command()
 async def dumpMemory(ctx):
+    """
+    Dump your memory file.
+    If exists, it'll try to send both your short term memory JSON file, and your long term memory text file.
+    """
     usr = str(ctx.message.author)
     if Path("ltmemories/"+usr+".txt").exists():
         await ctx.send(file=discord.File("ltmemories/"+usr+".txt"))
@@ -50,18 +58,37 @@ async def dumpMemory(ctx):
 
 @bot.command()
 async def current(ctx):
+    """
+    Will return whether you're in a conversation.
+    Will have (stale) if your short term memory is older than an hour, in which case it'll be immediately purged (appended to long term memory) when you start a new conversation.
+    """
     usr = str(ctx.message.author)
     
     if Path("stmemories/"+usr+".json").exists():
+        
+        toSend = ""
+        
         with open("stmemories/"+usr+".json", "r", encoding="utf-8") as mem:
             shortTermMemory = json.load(mem)#read short term memory
         
-        await ctx.send("Conversation ongoing with "+str(len(shortTermMemory)//2)+" interactions.")
+        toSend += "Conversation ongoing for "+ usr +" with "+str(len(shortTermMemory)//2)+" interactions."
+        
+        date = shortTermMemory[-2]["parts"][0][0:10].split("-")
+        time = shortTermMemory[-2]["parts"][0][11:19].split(":")
+
+        if datetime.datetime.now() - datetime.datetime(int(date[0]), int(date[1]), int(date[2]), int(time[0]), int(time[1]), int(time[2])) > datetime.timedelta(hours=1):
+            toSend += " (stale)"
+            
+
     else:
         await ctx.send("No conversation ongoing for "+usr)
 
 @bot.command()
 async def finish(ctx):
+    """
+    Finishes the current conversation.
+    Will summarize the current conversation and append it to your long term memory.
+    """
     usr = str(ctx.message.author)
 
     with open("stmemories/"+usr+".json", "r", encoding="utf-8") as mem:
@@ -85,7 +112,24 @@ async def finish(ctx):
         await ctx.send("Current conversation summarized and appended to long term memory: "+modelReply[1])
 
 @bot.command()
+async def stmemPurge(ctx):
+    """
+    Purges your short term memory file.
+    This will immediately and irreversibly delete your short term memory! (long term memory not affected)
+    """
+    usr = str(ctx.message.author)
+    if Path("stmemories/"+usr+".json").exists():
+        Path.unlink(Path("stmemories/"+usr+".json"))
+        await ctx.send("Purged short term memory for "+usr)
+    else:
+        await ctx.send("No short term memory file found for "+usr)
+
+@bot.command()
 async def talk(ctx, *, msg):
+    """
+    Converse with the bot!
+    The bot will remember you to the best of its abilities.
+    """
     usr = str(ctx.message.author)
 
     #short term memory: list (gemini API multi-turn)
@@ -167,6 +211,10 @@ async def talk(ctx, *, msg):
 
 @bot.command()
 async def transcribe(ctx):
+    """
+    Transcribes audio files with Whisper.
+    Cannot transcribe long files! (A few seconds ~ tens of seconds if fine)
+    """
 
     async with ctx.typing():
 
@@ -176,30 +224,37 @@ async def transcribe(ctx):
             await ctx.send("I'll try to parse through a few previous messages to find what file you want transcribed...")
             channel = ctx.channel
             try:
-                messages = [message async for message in channel.history(limit=5)]
+                messages = [message async for message in channel.history(limit=3)]
             except discord.HTTPException as e:
                 await ctx.send(f"An error occurred: {e}")
                 return
 
             for message in messages:
                 if len(message.attachments) != 0:
-                    attachments = message.attachments
-                    break
+                    attachments += message.attachments
             
             if len(attachments) == 0:
                 await ctx.send("I was unable to find an audio file to transcribe. Please try again.")
                 return
                 
+        sendText = ""
+
         for i in attachments:
             try:
                 if not (str(i.content_type).split("/")[0] == "audio" ):
                     continue
-                await ctx.send("> " + whispercf.cfwhisper(i.url)["result"]["text"])
+                sendText += i.filename + "\n"
+                sendText += "> " + whispercf.cfwhisper(i.url)["result"]["text"] + "\n"
             except:
-                await ctx.send("Sorry, something went wrong while trying to transcribe the file.")
+                await ctx.send("Sorry, something went wrong while trying to transcribe file: " + i.filename)
+        
+        await ctx.send(sendText)
 
 @bot.command()
 async def ytdlAudio(ctx, msg):
+    """
+    Uses yt-dlp to download audio.
+    """
 
     async with ctx.typing():
         url = URLExtract().find_urls(msg)[0]
@@ -215,6 +270,10 @@ async def ytdlAudio(ctx, msg):
 
 @bot.command()
 async def convert(ctx, msg):
+    """
+    Converts media files with ffmpeg or imagemagick.
+    Will look for the first file's type and choose a converter.
+    """
 
     async with ctx.typing():
         attachments = ctx.message.attachments
@@ -223,7 +282,7 @@ async def convert(ctx, msg):
             await ctx.send("You need to send me a file to convert!")
             return
         
-        typ, origform = attachments[0].content_type.split("/")
+        typ = attachments[0].content_type.split("/")[0]
 
         if typ == "image":
             conv = localconverters.imagemagick
@@ -265,10 +324,110 @@ async def convert(ctx, msg):
             Path.unlink(Path(i))
         for j in listnewfilenames:
             Path.unlink(Path(j))
+
+@bot.command()
+async def ffmpeg(ctx, msg):
+    """
+    Converts media files with ffmpeg.
+    """
+
+    async with ctx.typing():
+        attachments = ctx.message.attachments
+
+        if len(attachments) == 0:
+            await ctx.send("I'll try to parse through a few previous messages to find what file you want to convert...")
+            channel = ctx.channel
+            try:
+                messages = [message async for message in channel.history(limit=3)]
+            except discord.HTTPException as e:
+                await ctx.send(f"An error occurred: {e}")
+                return
+
+            for message in messages:
+                if len(message.attachments) != 0:
+                    attachments += message.attachments
+            
+            if len(attachments) == 0:
+                await ctx.send("I was unable to find a file to convert. Please try again.")
+                return
         
+        filesToSend = []
+        filesToUnlink = []
+
+        for i in attachments:
+            filename = i.filename
+            await i.save(fp=filename)
+            localconverters.ffmpeg(filename,msg)
+            filesToSend.append(discord.File(filename+msg))
+            filesToUnlink.append(Path(filename))
+            splitname = filename.split(".")
+
+            noext = ""
+
+            for i in range(len(splitname)-1):
+                noext += splitname[i]
+
+            newfilename = noext+"."+msg
+            filesToUnlink.append(Path(newfilename))
+        
+        await ctx.send(files=filesToSend)
+
+        for i in filesToUnlink:
+            Path.unlink(i)
+
+@bot.command()
+async def magick(ctx, msg):
+    """
+    Converts media files with imagemagick.
+    """
+
+    async with ctx.typing():
+        attachments = ctx.message.attachments
+
+        if len(attachments) == 0:
+            await ctx.send("I'll try to parse through a few previous messages to find what file you want to convert...")
+            channel = ctx.channel
+            try:
+                messages = [message async for message in channel.history(limit=3)]
+            except discord.HTTPException as e:
+                await ctx.send(f"An error occurred: {e}")
+                return
+
+            for message in messages:
+                if len(message.attachments) != 0:
+                    attachments += message.attachments
+            
+            if len(attachments) == 0:
+                await ctx.send("I was unable to find a file to convert. Please try again.")
+                return
+        
+        filesToSend = []
+        filesToUnlink = []
+
+        for i in attachments:
+            filename = i.filename
+            await i.save(fp=filename)
+            localconverters.imagemagick(filename,msg)
+            filesToSend.append(discord.File(filename+msg))
+            filesToUnlink.append(Path(filename))
+            splitname = filename.split(".")
+
+            noext = ""
+
+            for i in range(len(splitname)-1):
+                noext += splitname[i]
+
+            newfilename = noext+"."+msg
+            filesToUnlink.append(Path(newfilename))
+        
+        await ctx.send(files=filesToSend)
+
+        for i in filesToUnlink:
+            Path.unlink(i)
+
 @bot.command()
 async def urlscan(ctx, msg):
-
+    
     async with ctx.typing():
 
         url = URLExtract.find_urls(msg)[0]
@@ -304,14 +463,15 @@ async def qrscan(ctx):
 
             for message in messages:
                 if len(message.attachments) != 0:
-                    attachments = message.attachments
-                    break
+                    attachments += message.attachments
             
             if len(attachments) == 0:
                 await ctx.send("I was unable to find a file to scan. Please try again.")
                 return
         
         qreader = QReader()
+
+        sendText = ""
 
         for i in attachments:
             try:
@@ -321,16 +481,23 @@ async def qrscan(ctx):
                 decoded_text = qreader.detect_and_decode(image=image)
 
                 if len(decoded_text) == 0:
-                    await ctx.send("No QR code found. Please try again.")
+                    sendText += "QR code not found for file: "+filename+"\n"
                 
                 else:
-                    await ctx.send(decoded_text[0])
+                    
+                    sendText += "> "+filename+"\n"
+
+                    for j in decoded_text:
+                        sendText += j + "\n"
                 
                 Path.unlink(Path(filename))
 
             except:
-                await ctx.send("Sorry, something went wrong while trying to scan the QR code.")
-                return
+                sendText += "Error occured while processing file: "+filename+"\n"
+
+        await ctx.send(sendText)
+
+
 
 @bot.command()
 async def publish(ctx):

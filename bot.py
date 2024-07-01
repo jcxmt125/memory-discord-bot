@@ -77,9 +77,10 @@ async def finish(ctx):
 
     if modelReply[0] == False:
         await ctx.send("something went wrong: "+modelReply[1])
+        return
     else:#append summary to long term memory
         with open("ltmemories/"+usr+".txt", "a", encoding="utf-8") as mem:
-            mem.write(modelReply[1])
+            mem.write(str(datetime.datetime.today) + ": "+modelReply[1])
             Path.unlink(Path("stmemories/"+usr+".json"))
         await ctx.send("Current conversation summarized and appended to long term memory: "+modelReply[1])
 
@@ -105,17 +106,44 @@ async def talk(ctx, *, msg):
     else:
         with open("stmemories/"+usr+".json", "r", encoding="utf-8") as mem:
             shortTermMemory = json.load(mem)#read short term memory
+            date = shortTermMemory[-2]["parts"][0][0:10].split("-")
+            time = shortTermMemory[-2]["parts"][0][11:19].split(":")
+            time_difference = datetime.datetime.now() - datetime.datetime(int(date[0]), int(date[1]), int(date[2]), int(time[0]), int(time[1]), int(time[2]))
+
+            if time_difference > datetime.timedelta(hours=1):
+
+                print("auto-clear")
+
+                construct = "The following is a conversation between a chatbot and a user. Summarize the interaction briefly.\n"
+
+                for i in shortTermMemory:
+                    construct += i["parts"][0]
+                    construct += "\n"
+                
+                modelReply = gemrequest(construct)
+
+                if modelReply[0] == False:
+                    await ctx.send("something went wrong: "+modelReply[1])
+                    return
+                else:#append summary to long term memory
+                    with open("ltmemories/"+usr+".txt", "a", encoding="utf-8") as mem:
+                        mem.write(str(datetime.datetime.today)+": "+modelReply[1])
+                        
+                    with open("stmemories/"+usr+".json", "w", encoding="utf-8") as mem:
+                        mem.write("")
+                        shortTermMemory = ""
+
         
 
     async with ctx.typing():
         construct = []
         if shortTermMemory == "":
-            construct.append({'role':'user','parts': ["You are a helpful assistant, helping a user named " + usr + ". The current date is " + str(datetime.date.today()) + ". These are summaries of your previous conversations with the user for context: " + longTermMemory]})
+            construct.append({'role':'user','parts': ["You are a helpful assistant, helping a user named " + usr + ". These are summaries of your previous conversations with the user for context: " + longTermMemory+"\n Do not include a timestamp in your reply."]})
         else:
             construct = shortTermMemory
 
         construct.append({'role':'user',
-        'parts': [msg]})
+        'parts': [str(datetime.datetime.now()) + ": " + msg]})
 
         try:
             modelReply = gemrequest(construct)

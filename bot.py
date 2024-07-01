@@ -125,6 +125,18 @@ async def stmemPurge(ctx):
         await ctx.send("No short term memory file found for "+usr)
 
 @bot.command()
+async def deregisterAllMemory(ctx):
+    """
+    Deletes all short term and long term memory.
+    """
+    usr = str(ctx.message.author)
+    if Path("ltmemories/"+usr+".txt").exists():
+        Path.unlink(Path("ltmemories/"+usr+".txt"))
+    if Path("stmemories/"+usr+".json").exists():
+        Path.unlink(Path("stmemories/"+usr+".json"))
+    await ctx.send("Deleted all memory permanantly for "+usr)
+
+@bot.command()
 async def talk(ctx, *, msg):
     """
     Converse with the bot!
@@ -155,8 +167,6 @@ async def talk(ctx, *, msg):
             time_difference = datetime.datetime.now() - datetime.datetime(int(date[0]), int(date[1]), int(date[2]), int(time[0]), int(time[1]), int(time[2]))
 
             if time_difference > datetime.timedelta(hours=1):
-
-                print("auto-clear")
 
                 construct = "The following is a conversation between a chatbot and a user. Summarize the interaction briefly.\n"
 

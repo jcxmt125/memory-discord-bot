@@ -427,7 +427,9 @@ async def magick(ctx, msg):
 
 @bot.command()
 async def urlscan(ctx, msg):
-    
+    """
+    Scan a URL with Cloudflare Radar.
+    """
     async with ctx.typing():
 
         url = URLExtract.find_urls(msg)[0]
@@ -447,7 +449,9 @@ async def urlscan(ctx, msg):
 
 @bot.command()
 async def qrscan(ctx):
-
+    """
+    Scan a QR code embedded within an image.
+    """
     async with ctx.typing():
 
         attachments = ctx.message.attachments
@@ -501,6 +505,10 @@ async def qrscan(ctx):
 
 @bot.command()
 async def publish(ctx):
+    """
+    Publish a txt file as a webpage for easier viewing on mobile.
+    (Warn: the file will be public. Share URLs at your own risk.)
+    """
     async with ctx.typing():
         if len(attachments) == 0:
             await ctx.send("I'll try to parse through a few previous messages to find what file you want to use...")

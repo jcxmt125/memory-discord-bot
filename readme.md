@@ -16,5 +16,4 @@
 - see `requirements.txt` for Python dependancies.
 - install ffmpeg
 - install imagemagick, as `magick mogrify` or `convert`
-- `start.sh` should take care of the above steps on linux...
 - You may have to troubleshoot the [Qreader dependancy](https://pypi.org/project/qreader/).

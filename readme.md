@@ -13,7 +13,17 @@
 
 `git clone` the repo, then install dependancies.
 
+**If installing on a resource-constrained environment, for example an e2-micro VM, run `pip install torch --no-cache-dir` first**
+Then, run `pip install -r requirements.txt`.
+After that, you may want to install ffmpeg and imagemagick, with the package manager of your choice on Linux or with an installer on Windows.
+On linux, run: `sudo apt install libzbar0` (Else, see below for QReader repo instructions)
+
 - see `requirements.txt` for Python dependancies.
 - install ffmpeg
 - install imagemagick, as `magick mogrify` or `convert`
 - You may have to troubleshoot the [Qreader dependancy](https://pypi.org/project/qreader/).
+
+## Known issues
+
+The QR code read function will run slowly if your server is slow.
+- The dependancy relies on a machine learning model to detect the presence and location of the QR code.

@@ -1,10 +1,9 @@
 requests
 python-dotenv
 google-generativeai
-datetime
-pathlib
 boto3
 urlextract
 yt-dlp
 discord.py
 qreader
+qrcode

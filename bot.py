@@ -1,10 +1,9 @@
 #actual python modules
-import discord, os, json, subprocess, datetime
+import discord, os, json, subprocess, datetime, cv2, qrcode
 from discord.ext import commands
 from dotenv import load_dotenv
 from pathlib import Path
 from qreader import QReader
-import cv2
 
 #my own python files
 from geminillm import gemrequest
@@ -554,7 +553,21 @@ async def publish(ctx):
             
             await ctx.send(link)
 
+@bot.command()
+async def makeqr(ctx, *, msg):
+    """
+    Make a QR code from provided text.
+    """
+    async with ctx.typing():
+        img = qrcode.make(msg)
+        img.save("qrcode.png")
 
+        localconverters.imagemagick("qrcode.png", "webp")
+
+        await ctx.send(file=discord.File("qrcode.webp"))
+
+        Path.unlink(Path("qrcode.png"))
+        Path.unlink(Path("qrcode.webp"))
 
 @bot.event
 async def on_ready():

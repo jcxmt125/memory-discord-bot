@@ -367,7 +367,6 @@ async def ffmpeg(ctx, msg):
             filename = i.filename
             await i.save(fp=filename)
             localconverters.ffmpeg(filename,msg)
-            filesToSend.append(discord.File(filename+msg))
             filesToUnlink.append(Path(filename))
             splitname = filename.split(".")
 
@@ -377,6 +376,7 @@ async def ffmpeg(ctx, msg):
                 noext += splitname[i]
 
             newfilename = noext+"."+msg
+            filesToSend.append(discord.File(newfilename))
             filesToUnlink.append(Path(newfilename))
         
         await ctx.send(files=filesToSend)
@@ -417,7 +417,6 @@ async def magick(ctx, msg):
             filename = i.filename
             await i.save(fp=filename)
             localconverters.imagemagick(filename,msg)
-            filesToSend.append(discord.File(filename+msg))
             filesToUnlink.append(Path(filename))
             splitname = filename.split(".")
 
@@ -427,6 +426,7 @@ async def magick(ctx, msg):
                 noext += splitname[i]
 
             newfilename = noext+"."+msg
+            filesToSend.append(discord.File(newfilename))
             filesToUnlink.append(Path(newfilename))
         
         await ctx.send(files=filesToSend)

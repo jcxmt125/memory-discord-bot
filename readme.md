@@ -1,5 +1,7 @@
 # Discord bot that can remember and chat with you
 
+For webpage-based documentation, see [here](https://hackclub.jclink.link/documentations/discord-bots/memory-discord-bot)
+
 ## Features
 
 - Chatting: The bot will remember you, as well as the date you chatted with it.
@@ -22,6 +24,7 @@ On linux, run: `sudo apt install libzbar0` (Else, see below for QReader repo ins
 - install ffmpeg
 - install imagemagick, as `magick mogrify` or `convert`
 - You may have to troubleshoot the [Qreader dependancy](https://pypi.org/project/qreader/).
+- make a directory named ltmemories and stmemories
 
 ## Known issues
 

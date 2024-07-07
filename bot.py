@@ -223,7 +223,7 @@ async def talk(ctx, *, msg):
 async def transcribe(ctx):
     """
     Transcribes audio files with Whisper.
-    Cannot transcribe long files! (A few seconds ~ tens of seconds if fine)
+    Cannot transcribe long files! (A few seconds ~ tens of seconds is fine)
     """
 
     async with ctx.typing():

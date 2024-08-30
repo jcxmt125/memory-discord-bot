@@ -30,3 +30,9 @@ On linux, run: `sudo apt install libzbar0` (Else, see below for QReader repo ins
 
 The QR code read function will run slowly if your server is slow.
 - The dependancy relies on a machine learning model to detect the presence and location of the QR code.
+
+## Image
+
+This bot can be configured however you'd like, but for me...
+![screenshot of the bot replying](image.png)
+It replies like this!
